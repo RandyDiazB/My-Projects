@@ -1,0 +1,67 @@
+import random
+
+class Card:
+    def __init__(self, suit, rank):
+        self.suit = suit
+        self.rank = rank
+        self.value = self.assign_value()
+
+    def assign_value(self):
+        if self.rank in ['J', 'Q', 'K']: return 10
+        if self.rank == 'A': return 11
+        return int(self.rank)
+
+class Deck:
+    def __init__(self):
+        suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades']
+        ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+        self.cards = [Card(s, r) for s in suits for r in ranks]
+        random.shuffle(self.cards)
+
+    def deal(self):
+        return self.cards.pop()
+
+def calculate_hand(hand):
+    total = sum(card.value for card in hand)
+    aces = sum(1 for card in hand if card.rank == 'A')
+    while total > 21 and aces:
+        total -= 10
+        aces -= 1
+    return total
+
+# --- Simple Game Loop ---
+balance = 500
+while balance > 0:
+    print(f"\nBalance: ${balance}")
+    bet = int(input("Enter bet: "))
+    deck = Deck()
+    player_hand = [deck.deal(), deck.deal()]
+    dealer_hand = [deck.deal(), deck.deal()]
+
+    # Player Turn
+    while calculate_hand(player_hand) < 21:
+        print(f"Hand: {calculate_hand(player_hand)}")
+        action = input("(H)it or (S)tand? ").lower()
+        if action == 'h': player_hand.append(deck.deal())
+        else: break
+
+    p_total = calculate_hand(player_hand)
+    if p_total > 21:
+        print("Bust!")
+        balance -= bet
+    else:
+        # Dealer Turn
+        while calculate_hand(dealer_hand) < 17:
+            dealer_hand.append(deck.deal())
+        
+        d_total = calculate_hand(dealer_hand)
+        print(f"Dealer: {d_total}, You: {p_total}")
+        
+        if d_total > 21 or p_total > d_total:
+            print("You Win!")
+            balance += bet
+        elif p_total < d_total:
+            print("Dealer Wins!")
+            balance -= bet
+        else:
+            print("Push!")
