@@ -1,0 +1,112 @@
+#include <iostream>
+#include <string>
+#include <random>
+#include <limits>
+
+// Enumeration for better code readability
+enum BetType { SINGLE_NUMBER = 1, EVEN_ODD = 2 };
+
+class RouletteGame {
+private:
+    int balance;
+    std::mt19937 generator; // Mersenne Twister RNG
+
+    // Helper to get a random number between 0 and 36
+    int spinWheel() {
+        std::uniform_int_distribution<int> distribution(0, 36);
+        return distribution(generator);
+    }
+
+    // Modern way to clear input buffer errors
+    void clearInput() {
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+
+public:
+    RouletteGame(int start_balance) 
+        : balance(start_balance), generator(std::random_device{}()) {}
+
+    void playRound() {
+        if (balance <= 0) {
+            std::cout << "You're out of points! Game over.\n";
+            return;
+        }
+
+        int bet, choice, betAmount;
+        std::cout << "\nCurrent Balance: " << balance << " points\n";
+        std::cout << "1. Specific Number (35:1 payout)\n";
+        std::cout << "2. Even/Odd (1:1 payout)\n";
+        std::cout << "Choose your bet type: ";
+        std::cin >> choice;
+
+        std::cout << "Enter bet amount: ";
+        std::cin >> betAmount;
+
+        if (betAmount > balance || betAmount <= 0) {
+            std::cout << "Invalid bet amount.\n";
+            clearInput();
+            return;
+        }
+
+        int result = spinWheel();
+        bool won = false;
+        int multiplier = 0;
+
+        if (choice == 1) {
+            std::cout << "Pick a number (0-36): ";
+            std::cin >> bet;
+            if (bet == result) { won = true; multiplier = 35; }
+        } else if (choice == 2) {
+            std::cout << "1. Even\n2. Odd\nChoice: ";
+            std::cin >> bet;
+            if ((result != 0) && ((result % 2 == 0 && bet == 1) || (result % 2 != 0 && bet == 2))) {
+                won = true; multiplier = 1;
+            }
+        }
+
+        std::cout << "The ball landed on: " << result << "\n";
+
+        if (won) {
+            int winnings = betAmount * multiplier;
+            balance += winnings;
+            std::cout << "You won " << winnings << " points!\n";
+            offerDoubleOrNothing(winnings);
+        } else {
+            balance -= betAmount;
+            std::cout << "You lost " << betAmount << " points.\n";
+        }
+    }
+
+    // Recursive "Double or Nothing" logic
+    void offerDoubleOrNothing(int currentWinnings) {
+        char choice;
+        std::cout << "Double or Nothing? (y/n): ";
+        std::cin >> choice;
+
+        if (choice == 'y' || choice == 'Y') {
+            if (spinWheel() % 2 == 0) {
+                int newWinnings = currentWinnings; // Double it
+                balance += newWinnings; 
+                std::cout << "Success! New winnings: " << currentWinnings * 2 << "\n";
+                offerDoubleOrNothing(currentWinnings * 2);
+            } else {
+                balance -= currentWinnings;
+                std::cout << "Bust! You lost the winnings from that round.\n";
+            }
+        }
+    }
+};
+
+int main() {
+    RouletteGame game(1000);
+    char keepPlaying = 'y';
+
+    while (keepPlaying == 'y' || keepPlaying == 'Y') {
+        game.playRound();
+        std::cout << "Play another round? (y/n): ";
+        std::cin >> keepPlaying;
+    }
+
+    return 0;
+}
