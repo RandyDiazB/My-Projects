@@ -1,0 +1,126 @@
+-- UNO Logic in Lua
+math.randomseed(os.time())
+
+local COLORS = {"Red", "Yellow", "Green", "Blue"}
+local VALUES = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "Skip", "Reverse", "Draw Two"}
+local SPECIALS = {"Wild", "Wild Draw Four"}
+
+-- 1. Deck Generation
+local function create_deck()
+    local deck = {}
+    for _, color in ipairs(COLORS) do
+        for _, val in ipairs(VALUES) do
+            table.insert(deck, {color = color, value = val})
+            if val ~= "0" then -- UNO decks have two of every number except 0
+                table.insert(deck, {color = color, value = val})
+            end
+        end
+    end
+    for i = 1, 4 do
+        for _, spec in ipairs(SPECIALS) do
+            table.insert(deck, {color = "Any", value = spec})
+        end
+    end
+    return deck
+end
+
+-- 2. Shuffle Logic (Fisher-Yates)
+local function shuffle(t)
+    for i = #t, 2, -1 do
+        local j = math.random(i)
+        t[i], t[j] = t[j], t[i]
+    end
+end
+
+-- 3. Game State
+local deck = create_deck()
+shuffle(deck)
+
+local players = {
+    {name = "Player 1", hand = {}},
+    {name = "CPU", hand = {}}
+}
+
+-- Initial Deal
+for i = 1, 7 do
+    for _, p in ipairs(players) do
+        table.insert(p.hand, table.remove(deck))
+    end
+end
+
+local discard_pile = {table.remove(deck)}
+local current_turn = 1
+local direction = 1 -- 1 for forward, -1 for reverse
+
+-- 4. Play Validation
+local function can_play(card, top_card)
+    return card.color == "Any" or 
+           card.color == top_card.color or 
+           card.value == top_card.value
+end
+
+-- 5. Game Loop Helper
+local function print_hand(player)
+    print("\n" .. player.name .. "'s Hand:")
+    for i, card in ipairs(player.hand) do
+        print(i .. ": [" .. card.color .. " " .. card.value .. "]")
+    end
+end
+
+print("--- Welcome to Lua UNO ---")
+local game_running = true
+
+while game_running do
+    local p = players[current_turn]
+    local top = discard_pile[#discard_pile]
+    
+    print("\n==========================")
+    print("TOP CARD: [" .. top.color .. " " .. top.value .. "]")
+    
+    if current_turn == 1 then
+        print_hand(p)
+        print("Pick a card index to play (or 0 to draw):")
+        local choice = tonumber(io.read())
+        
+        if choice == 0 then
+            table.insert(p.hand, table.remove(deck))
+            print("You drew a card.")
+        elseif p.hand[choice] and can_play(p.hand[choice], top) then
+            local played = table.remove(p.hand, choice)
+            table.insert(discard_pile, played)
+            print("You played " .. played.value)
+        else
+            print("Invalid move! Penalty: Draw 1.")
+            table.insert(p.hand, table.remove(deck))
+        end
+    else
+        -- Simple CPU AI
+        local played_idx = nil
+        for i, card in ipairs(p.hand) do
+            if can_play(card, top) then
+                played_idx = i
+                break
+            end
+        end
+        
+        if played_idx then
+            local played = table.remove(p.hand, played_idx)
+            table.insert(discard_pile, played)
+            print("CPU played " .. played.color .. " " .. played.value)
+        else
+            table.insert(p.hand, table.remove(deck))
+            print("CPU drew a card.")
+        end
+    end
+
+    -- Check for Win
+    if #p.hand == 0 then
+        print("\n*** " .. p.name .. " WINS! ***")
+        game_running = false
+    end
+
+    -- Next Turn
+    current_turn = current_turn + direction
+    if current_turn > #players then current_turn = 1 end
+    if current_turn < 1 then current_turn = #players end
+end
